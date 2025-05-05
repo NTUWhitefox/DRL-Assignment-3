@@ -23,7 +23,8 @@ LEARNING_RATE = 0.00025
 WEIGHT_DECAY = 1e-6
 NUM_EPISODES = 2000
 EPISODE_MAX_STEPS = 2500
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+device = torch.device('cpu')
+print(device)
 class stackedReplayBuffer:
     def __init__(self, dummy_instance = None, max_size=50000):
         self.max_size = max_size
@@ -133,7 +134,9 @@ class mario_agent():
     def __init__(self):
         self.target_net = QNet( input_dim = (STACK_SIZE, INPUT_IMAGE_SIZE[0], INPUT_IMAGE_SIZE[1]), output_dim = 12)
         self.value_net = QNet(input_dim = (STACK_SIZE, INPUT_IMAGE_SIZE[0], INPUT_IMAGE_SIZE[1]), output_dim = 12)
-        print(self.target_net)
+        #print(self.target_net)
+        self.target_net.to(device)
+        self.value_net.to(device)
 
         self.optimizer = torch.optim.Adam(self.value_net.parameters(), lr=LEARNING_RATE, weight_decay = WEIGHT_DECAY)
 
@@ -249,20 +252,25 @@ class Agent(object):
     def __init__(self):
         self.action_space = gym.spaces.Discrete(12)
         self.agent = mario_agent()
-        self.value_path = 'model_weight_7500_value.pth'
-        self.target_path = 'model_weight_7500_target.pth'
+        self.value_path = 'model_weight_12000_value.pth'
+        self.target_path = 'model_weight_12000_target.pth'
         self.agent.load_weight(self.value_path, self.target_path)
         self.skip_cnt = 4
         self.step = 0
         self.action = 0
-        self.reset_cnt = 2
+        self.reset_cnt = 0
+
+        self.test_rand = 0
 
     def act(self, observation):
         if self.reset_cnt > 0:
             self.reset_cnt-=1
             return 0
+        if self.test_rand > 0:
+            self.test_rand -= 1
+            return self.action_space.sample()
         if self.step % self.skip_cnt == 0:
             state = self.agent.replay_buffer.stack_update(observation, is_new_episode = False)
-            self.action = self.agent.get_action(state, deterministic=True)
+            self.action = self.agent.get_action(state, deterministic = True)
         self.step += 1
         return self.action
